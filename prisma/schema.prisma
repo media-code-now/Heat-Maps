@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ScanStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum RankSource {
+  MOCK
+  DATAFORSEO
+}
+
+model Project {
+  id                        String   @id @default(cuid())
+  userId                    String
+  businessName              String
+  website                   String?
+  googleBusinessProfileName String?
+  placeId                   String?
+  address                   String?
+  city                      String?
+  state                     String?
+  latitude                  Float
+  longitude                 Float
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  keywords Keyword[]
+  scans    Scan[]
+  reports  Report[]
+
+  @@index([userId, createdAt])
+  @@index([businessName])
+  @@map("projects")
+}
+
+model Keyword {
+  id        String   @id @default(cuid())
+  projectId String
+  phrase    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scans   Scan[]
+
+  @@unique([projectId, phrase])
+  @@index([phrase])
+  @@map("keywords")
+}
+
+model Scan {
+  id                 String     @id @default(cuid())
+  projectId          String
+  keywordId          String
+  gridSize           Int
+  radiusMiles        Float
+  centerLatitude     Float
+  centerLongitude    Float
+  status             ScanStatus @default(PENDING)
+  source             RankSource @default(MOCK)
+  avgRank            Float?
+  visibilityScore    Int?
+  top3Percentage     Int?
+  notFoundPercentage Int?
+  error              String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  keyword    Keyword          @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  gridPoints ScanGridPoint[]
+  rankings   RankingResult[]
+  reports    Report[]
+
+  @@index([projectId, createdAt])
+  @@index([keywordId, createdAt])
+  @@map("scans")
+}
+
+model ScanGridPoint {
+  id        String   @id @default(cuid())
+  scanId    String
+  row       Int
+  column    Int
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+
+  scan    Scan           @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  ranking RankingResult?
+
+  @@unique([scanId, row, column])
+  @@index([scanId])
+  @@map("scan_grid_points")
+}
+
+model RankingResult {
+  id              String   @id @default(cuid())
+  scanId          String
+  gridPointId     String   @unique
+  rank            Int?
+  notFound        Boolean  @default(false)
+  matchedTitle    String?
+  matchedUrl      String?
+  matchedPlaceId  String?
+  resultUrls      String[]
+  rawResponse     Json?
+  createdAt       DateTime @default(now())
+
+  scan        Scan                @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  gridPoint   ScanGridPoint       @relation(fields: [gridPointId], references: [id], onDelete: Cascade)
+  competitors RankingCompetitor[]
+
+  @@index([scanId])
+  @@index([rank])
+  @@map("ranking_results")
+}
+
+model RankingCompetitor {
+  id              String  @id @default(cuid())
+  rankingResultId String
+  title           String
+  rank            Int?
+  url             String?
+  placeId         String?
+  rating          Float?
+  address         String?
+
+  rankingResult RankingResult @relation(fields: [rankingResultId], references: [id], onDelete: Cascade)
+
+  @@index([rankingResultId])
+  @@map("ranking_competitors")
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  projectId String
+  scanId    String
+  title     String
+  shareSlug String   @unique @default(cuid())
+  summary   Json?
+  insights  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scan    Scan    @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([scanId])
+  @@map("reports")
+}
