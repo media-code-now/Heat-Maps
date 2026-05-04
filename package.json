@@ -2,15 +2,22 @@
   "name": "heat-map-app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+  "dev": "next dev",
+  "build": "next build",
+  "prebuild": "prisma generate",
+  "postinstall": "prisma generate",
+  "prisma:generate": "prisma generate",
+  "check:prisma": "node -e 'try{ require(\"@prisma/client\"); console.log(\"Prisma client OK\"); }catch(e){ console.error(\"Prisma client compatibility error:\", e); process.exit(1) }'",
+  "start": "next start",
+  "lint": "next lint",
+  "db:generate": "prisma generate",
+  "db:push": "prisma db push",
+  "db:migrate": "prisma migrate dev",
+  "db:studio": "prisma studio"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.39.3",
